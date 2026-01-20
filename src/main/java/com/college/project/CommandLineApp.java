@@ -3,6 +3,7 @@ package com.college.project;
 import java.io.File;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +115,7 @@ public class CommandLineApp implements CommandLineRunner {
             for (int i = 3; i > 0; i--) {
                 System.out.println("   " + i + "...");
                 try {
-                    Thread.sleep(1000);
+                    TimeUnit.SECONDS.sleep(1); // More readable than Thread.sleep(1000)
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     System.out.println("⚠️ Countdown interrupted");
