@@ -48,9 +48,11 @@ public class CommandLineApp implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("🎓 FACE CAPTURE AND ID CARD PROCESSING SYSTEM");
-        System.out.println("=".repeat(60));
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("🎓 CSE MULTI-STUDENT ID CARD FACE MATCHING SYSTEM");
+        System.out.println("=".repeat(70));
+        System.out.println("📊 Automatically find and extract your ID card from CSE database");
+        System.out.println("🔍 Compares your face with all CSE students (3 classes)");
 
         Scanner scanner = new Scanner(System.in);
 
@@ -59,7 +61,7 @@ public class CommandLineApp implements CommandLineRunner {
             System.out.println("\n📷 STEP 1: CHOOSE FACE INPUT METHOD");
             System.out.println("-".repeat(40));
             System.out.println("1. Capture face from camera");
-            System.out.println("2. Upload student photo (with file browser)");
+            System.out.println("2. Upload student photo (browse from This PC)");
             System.out.print("Enter your choice (1 or 2): ");
             
             String choice = scanner.nextLine().trim();
@@ -89,35 +91,44 @@ public class CommandLineApp implements CommandLineRunner {
                 return;
             }
 
-            // Step 2: Process ID Card PDF
-            System.out.println("\n� STEP 2: PROCESSING ID CARD PDF");
-            System.out.println("-".repeat(40));
+            // Step 2: Process Multi-Student ID Cards PDF
+            System.out.println("\n📄 STEP 2: PROCESSING MULTI-STUDENT ID CARDS PDF");
+            System.out.println("-".repeat(50));
             
-            File idCardFile = new File("idcard.pdf");
-            if (!idCardFile.exists()) {
-                System.out.println("❌ idcard.pdf not found in current directory!");
-                System.out.println("Please place your ID card PDF file as 'idcard.pdf' in the project root.");
+            File multiIdCardsFile = new File("cse_students_idcards.pdf");
+            if (!multiIdCardsFile.exists()) {
+                System.out.println("❌ cse_students_idcards.pdf not found in current directory!");
+                System.out.println("Please place the multi-student ID cards PDF as 'cse_students_idcards.pdf' in the project root.");
+                System.out.println("This PDF should contain ID cards of all CSE students from 3 classes.");
                 return;
             }
 
-            String processedPdfPath = processIdCardPdf(idCardFile);
-            if (processedPdfPath == null) {
-                System.out.println("❌ Failed to process ID card PDF. Exiting...");
+            String processResult = processMultiStudentIdCards(multiIdCardsFile);
+            if (processResult == null) {
+                System.out.println("❌ Failed to process multi-student ID cards PDF. Exiting...");
                 return;
             }
 
-            // Step 3: Face Verification
-            System.out.println("\n🔍 STEP 3: FACE VERIFICATION");
-            System.out.println("-".repeat(40));
-            performFaceVerification(studentImagePath, processedPdfPath);
+            // Step 3: Face Matching and ID Card Extraction
+            System.out.println("\n🔍 STEP 3: FACE MATCHING AND ID CARD EXTRACTION");
+            System.out.println("-".repeat(50));
+            String matchedIdCardPath = findAndExtractMatchingIdCard(studentImagePath);
+
+            if (matchedIdCardPath != null) {
+                System.out.println("\n✅ MATCHING ID CARD FOUND AND EXTRACTED!");
+                System.out.println("📁 Matched ID card saved to: " + matchedIdCardPath);
+            } else {
+                System.out.println("\n❌ NO MATCHING ID CARD FOUND");
+                System.out.println("Your face was not found in any of the CSE student ID cards.");
+            }
 
             System.out.println("\n✅ PROCESS COMPLETED SUCCESSFULLY!");
             System.out.println("📁 Check the following folders for results:");
             System.out.println("   - camera/ (captured face images)");
             System.out.println("   - student_photos/ (uploaded student photos)");
-            System.out.println("   - idcards/ (processed ID card PDF)");
-            System.out.println("   - uploads/ (extracted images from PDF)");
-            System.out.println("   - reports/ (verification reports named as StudentName.pdf)");
+            System.out.println("   - extracted_idcards/ (individual ID cards from multi-student PDF)");
+            System.out.println("   - matched_idcards/ (your matching ID card as separate PDF)");
+            System.out.println("   - reports/ (verification reports)");
 
         } catch (Exception e) {
             logger.error("Error in command line application: {}", e.getMessage());
@@ -195,7 +206,7 @@ public class CommandLineApp implements CommandLineRunner {
             }
 
             System.out.println("📁 Choose how to select your student photo:");
-            System.out.println("1. Browse and select file (File Chooser)");
+            System.out.println("1. Browse and select file (starts from This PC)");
             System.out.println("2. Enter filename manually");
             System.out.print("Enter your choice (1 or 2): ");
             
@@ -305,7 +316,7 @@ public class CommandLineApp implements CommandLineRunner {
             JFileChooser fileChooser = new JFileChooser();
             
             // Set dialog title
-            fileChooser.setDialogTitle("Select Student Photo");
+            fileChooser.setDialogTitle("Select Student Photo - Browse This PC");
             
             // Set file filter for image files
             FileNameExtensionFilter imageFilter = new FileNameExtensionFilter(
@@ -313,24 +324,61 @@ public class CommandLineApp implements CommandLineRunner {
                 "jpg", "jpeg", "png", "bmp");
             fileChooser.setFileFilter(imageFilter);
             
-            // Set current directory to user's Pictures folder or current directory
-            String userHome = System.getProperty("user.home");
-            File picturesDir = new File(userHome, "Pictures");
-            if (picturesDir.exists()) {
-                fileChooser.setCurrentDirectory(picturesDir);
-            } else {
-                fileChooser.setCurrentDirectory(new File("."));
+            // Try multiple approaches to start from "This PC" view
+            try {
+                // Method 1: Set to null to show computer root
+                fileChooser.setCurrentDirectory(null);
+                
+                // Method 2: If null doesn't work, try file system roots
+                if (fileChooser.getCurrentDirectory() != null) {
+                    File[] roots = File.listRoots();
+                    if (roots.length > 0) {
+                        // On Windows, show the first drive (usually C:)
+                        fileChooser.setCurrentDirectory(roots[0]);
+                    }
+                }
+                
+                // Method 3: Alternative approach for Windows
+                String os = System.getProperty("os.name").toLowerCase();
+                if (os.contains("windows")) {
+                    // Try to set to Computer/This PC view
+                    File computerRoot = new File("Computer");
+                    if (!computerRoot.exists()) {
+                        // Fallback to C: drive root
+                        File cDrive = new File("C:\\");
+                        if (cDrive.exists()) {
+                            fileChooser.setCurrentDirectory(cDrive);
+                        }
+                    }
+                }
+                
+            } catch (Exception e) {
+                // If all methods fail, use user home as fallback
+                fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
             }
+            
+            // Configure file chooser for better experience
+            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            fileChooser.setAcceptAllFileFilterUsed(false); // Only show image files
+            fileChooser.setMultiSelectionEnabled(false); // Single file selection
+            
+            // Display helpful information
+            System.out.println("📂 File chooser opened - Browse from This PC");
+            System.out.println("💡 Navigate to any drive (C:, D:, E:, etc.) to find your photo");
+            System.out.println("📸 Supported formats: JPG, JPEG, PNG, BMP");
+            System.out.println("🔍 Only image files will be shown in the browser");
             
             // Show open dialog
             int result = fileChooser.showOpenDialog(null);
             
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = fileChooser.getSelectedFile();
+                System.out.println("✅ File selected successfully!");
                 System.out.println("📸 Selected file: " + selectedFile.getAbsolutePath());
+                System.out.println("📏 File size: " + (selectedFile.length() / 1024) + " KB");
                 return selectedFile;
             } else {
-                System.out.println("📂 File selection cancelled");
+                System.out.println("📂 File selection cancelled by user");
                 return null;
             }
             
@@ -345,6 +393,7 @@ public class CommandLineApp implements CommandLineRunner {
     /**
      * Process ID card PDF and save to idcards folder
      */
+    @SuppressWarnings("unused")
     private String processIdCardPdf(File idCardFile) {
         try {
             System.out.println("🔄 Processing ID card PDF: " + idCardFile.getName());
@@ -516,5 +565,268 @@ public class CommandLineApp implements CommandLineRunner {
         details.setYear("N/A");
         
         return details;
+    }
+
+    /**
+     * Process multi-student ID cards PDF and extract individual ID cards
+     */
+    private String processMultiStudentIdCards(File multiIdCardsFile) {
+        try {
+            System.out.println("🔄 Processing multi-student ID cards PDF: " + multiIdCardsFile.getName());
+            System.out.println("📊 This PDF contains ID cards from CSE department (3 classes)");
+            
+            // Create directories for extracted ID cards
+            File extractedIdCardsDir = new File("extracted_idcards");
+            if (!extractedIdCardsDir.exists()) {
+                boolean created = extractedIdCardsDir.mkdirs();
+                if (created) {
+                    logger.info("📁 Created extracted_idcards directory");
+                }
+            }
+            
+            File matchedIdCardsDir = new File("matched_idcards");
+            if (!matchedIdCardsDir.exists()) {
+                boolean created = matchedIdCardsDir.mkdirs();
+                if (created) {
+                    logger.info("📁 Created matched_idcards directory");
+                }
+            }
+            
+            // Process the multi-student PDF using existing PDFService
+            Map<String, Object> result = pdfService.processIdCardPdf(multiIdCardsFile);
+            if (!(Boolean) result.get("success")) {
+                System.out.println("❌ PDF processing failed: " + result.get("message"));
+                return null;
+            }
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> processingResults = (Map<String, Object>) result.get("processingResults");
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> images = (Map<String, Object>) processingResults.get("images");
+            if (images != null && (Boolean) images.get("success")) {
+                Integer totalImages = (Integer) images.get("totalImages");
+                System.out.println("📸 Extracted " + totalImages + " images from multi-student PDF");
+                
+                @SuppressWarnings("unchecked")
+                java.util.List<Map<String, Object>> imagesList = (java.util.List<Map<String, Object>>) images.get("images");
+                if (imagesList != null) {
+                    System.out.println("🎓 Found " + imagesList.size() + " potential student ID cards");
+                    for (int i = 0; i < imagesList.size(); i++) {
+                        Map<String, Object> imageInfo = imagesList.get(i);
+                        System.out.println("   - ID Card " + (i + 1) + ": " + imageInfo.get("path"));
+                    }
+                }
+            }
+            
+            System.out.println("✅ Multi-student ID cards PDF processed successfully!");
+            return "processed"; // Return success indicator
+            
+        } catch (Exception e) {
+            logger.error("Error processing multi-student ID cards PDF: {}", e.getMessage());
+            System.out.println("❌ Error processing PDF: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Find and extract the matching ID card from all processed ID cards
+     */
+    private String findAndExtractMatchingIdCard(String studentImagePath) {
+        try {
+            System.out.println("🔄 Searching for matching face in all CSE student ID cards...");
+            System.out.println("📸 Your image: " + studentImagePath);
+            
+            // Find all extracted images from uploads folder
+            File uploadsDir = new File("uploads");
+            if (!uploadsDir.exists()) {
+                System.out.println("⚠️ No extracted images found from PDF processing");
+                return null;
+            }
+            
+            File[] imageFiles = uploadsDir.listFiles((dir, name) -> 
+                name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".png"));
+            
+            if (imageFiles == null || imageFiles.length == 0) {
+                System.out.println("⚠️ No ID card images found in uploads folder");
+                return null;
+            }
+            
+            System.out.println("🔍 Comparing your face with " + imageFiles.length + " ID card photos...");
+            
+            String bestMatchPath = null;
+            double bestConfidence = 0.0;
+            StudentDetails bestMatchStudent = null;
+            int matchCount = 0;
+            
+            // Compare with each extracted ID card image
+            for (int i = 0; i < imageFiles.length; i++) {
+                String idCardImagePath = imageFiles[i].getPath();
+                System.out.println("   Checking ID Card " + (i + 1) + "/" + imageFiles.length + ": " + imageFiles[i].getName());
+                
+                try {
+                    // Create a temporary student details for this comparison
+                    StudentDetails tempStudent = new StudentDetails();
+                    tempStudent.setName("Student_" + (i + 1));
+                    tempStudent.setRegisterNumber("CSE" + String.format("%03d", i + 1));
+                    tempStudent.setDepartment("CSE");
+                    
+                    // Perform face verification
+                    VerificationResult verificationResult = faceVerificationService.verifyIdentity(
+                        studentImagePath, idCardImagePath, tempStudent);
+                    
+                    double confidence = verificationResult.getConfidence();
+                    boolean isMatch = verificationResult.isMatch();
+                    
+                    System.out.println("      → Confidence: " + String.format("%.1f%%", confidence) + 
+                                     (isMatch ? " ✅ MATCH" : " ❌ No match"));
+                    
+                    if (isMatch && confidence > bestConfidence) {
+                        bestConfidence = confidence;
+                        bestMatchPath = idCardImagePath;
+                        bestMatchStudent = tempStudent;
+                        matchCount++;
+                    }
+                    
+                } catch (Exception e) {
+                    System.out.println("      → Error comparing with this ID card: " + e.getMessage());
+                }
+            }
+            
+            if (bestMatchPath != null) {
+                System.out.println("\n🎯 BEST MATCH FOUND!");
+                System.out.println("📸 Matching ID card: " + bestMatchPath);
+                System.out.println("🎯 Confidence: " + String.format("%.1f%%", bestConfidence));
+                System.out.println("📊 Total matches found: " + matchCount);
+                
+                // Extract and save the matching ID card as separate PDF
+                String extractedPdfPath = extractMatchingIdCardAsPdf(bestMatchPath, bestMatchStudent);
+                
+                // Generate verification report
+                if (extractedPdfPath != null) {
+                    generateMatchingReport(studentImagePath, bestMatchPath, bestMatchStudent, bestConfidence);
+                }
+                
+                return extractedPdfPath;
+            } else {
+                System.out.println("\n❌ NO MATCHING FACE FOUND");
+                System.out.println("Your face does not match any of the " + imageFiles.length + " CSE student ID cards.");
+                System.out.println("💡 Possible reasons:");
+                System.out.println("   - You are not a CSE student in this batch");
+                System.out.println("   - Image quality is too low");
+                System.out.println("   - Lighting conditions are different");
+                return null;
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error in face matching: {}", e.getMessage());
+            System.out.println("❌ Error in face matching: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Extract the matching ID card and save as separate PDF
+     */
+    private String extractMatchingIdCardAsPdf(String matchingImagePath, StudentDetails studentDetails) {
+        try {
+            System.out.println("📄 Extracting matching ID card as separate PDF...");
+            
+            String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            
+            String studentName = studentDetails.getName() != null ? 
+                studentDetails.getName().replaceAll("[^a-zA-Z0-9]", "_") : "MATCHED_STUDENT";
+            
+            String pdfFilename = studentName + "_IDCard_" + timestamp + ".pdf";
+            String pdfPath = "matched_idcards" + File.separator + pdfFilename;
+            
+            // Use PDFBox to create a new PDF with the matching image
+            try (org.apache.pdfbox.pdmodel.PDDocument document = new org.apache.pdfbox.pdmodel.PDDocument()) {
+                org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage();
+                document.addPage(page);
+                
+                try (org.apache.pdfbox.pdmodel.PDPageContentStream contentStream = 
+                     new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
+                    
+                    // Add the matching ID card image to PDF
+                    org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject image = 
+                        org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.createFromFile(matchingImagePath, document);
+                    
+                    // Scale image to fit page
+                    float pageWidth = page.getMediaBox().getWidth();
+                    float pageHeight = page.getMediaBox().getHeight();
+                    float imageWidth = image.getWidth();
+                    float imageHeight = image.getHeight();
+                    
+                    // Calculate scaling to fit page while maintaining aspect ratio
+                    float scaleX = (pageWidth - 100) / imageWidth;
+                    float scaleY = (pageHeight - 100) / imageHeight;
+                    float scale = Math.min(scaleX, scaleY);
+                    
+                    float scaledWidth = imageWidth * scale;
+                    float scaledHeight = imageHeight * scale;
+                    
+                    // Center the image on page
+                    float x = (pageWidth - scaledWidth) / 2;
+                    float y = (pageHeight - scaledHeight) / 2;
+                    
+                    contentStream.drawImage(image, x, y, scaledWidth, scaledHeight);
+                    
+                    // Add title
+                    contentStream.beginText();
+                    contentStream.setFont(org.apache.pdfbox.pdmodel.font.PDType1Font.HELVETICA_BOLD, 16);
+                    contentStream.newLineAtOffset(50, pageHeight - 50);
+                    contentStream.showText("EXTRACTED CSE STUDENT ID CARD");
+                    contentStream.endText();
+                    
+                    // Add extraction info
+                    contentStream.beginText();
+                    contentStream.setFont(org.apache.pdfbox.pdmodel.font.PDType1Font.HELVETICA, 10);
+                    contentStream.newLineAtOffset(50, 30);
+                    contentStream.showText("Extracted on: " + java.time.LocalDateTime.now().toString());
+                    contentStream.endText();
+                }
+                
+                document.save(pdfPath);
+                System.out.println("✅ Matching ID card saved as PDF: " + pdfPath);
+                return pdfPath;
+            }
+            
+        } catch (IOException | RuntimeException e) {
+            logger.error("Error extracting ID card as PDF: {}", e.getMessage());
+            System.out.println("❌ Error creating PDF: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Generate verification report for the matching ID card
+     */
+    private void generateMatchingReport(String studentImagePath, String matchingIdCardPath, 
+                                      StudentDetails studentDetails, double confidence) {
+        try {
+            System.out.println("📄 Generating matching verification report...");
+            
+            // Create verification result
+            VerificationResult result = new VerificationResult();
+            result.setResult("MATCH FOUND IN CSE DATABASE");
+            result.setMatch(true);
+            result.setConfidence(confidence);
+            result.setMethod("Multi-Student ID Card Face Matching");
+            result.setMessage("Successfully found matching ID card in CSE student database");
+            
+            // Generate report
+            Map<String, Object> reportResult = reportGenerationService.generateVerificationReport(
+                result, studentDetails, studentImagePath, matchingIdCardPath);
+            
+            if ((Boolean) reportResult.get("success")) {
+                System.out.println("✅ Verification report generated: " + reportResult.get("reportPath"));
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error generating matching report: {}", e.getMessage());
+            System.out.println("⚠️ Could not generate verification report: " + e.getMessage());
+        }
     }
 }
