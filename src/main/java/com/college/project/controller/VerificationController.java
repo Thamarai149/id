@@ -1,17 +1,5 @@
 package com.college.project.controller;
 
-import com.college.project.model.ApiResponse;
-import com.college.project.model.StudentDetails;
-import com.college.project.model.VerificationResult;
-import com.college.project.service.FaceVerificationService;
-import com.college.project.service.PDFService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -19,6 +7,24 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.college.project.model.ApiResponse;
+import com.college.project.model.StudentDetails;
+import com.college.project.model.VerificationResult;
+import com.college.project.service.FaceVerificationService;
+import com.college.project.service.PDFService;
 
 /**
  * Verification Controller for ID Card Processing and Face Verification
@@ -37,7 +43,7 @@ public class VerificationController {
     @Autowired
     private FaceVerificationService faceVerificationService;
 
-    private static final String UPLOAD_FOLDER = "uploads";
+    private static final String IDCARDS_FOLDER = "idcards";
 
     /**
      * Upload and process college ID card PDF
@@ -62,20 +68,20 @@ public class VerificationController {
                     "INVALID_FORMAT"));
             }
 
-            // Create upload directory
-            File uploadDir = new File(UPLOAD_FOLDER);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
+            // Create ID cards directory
+            File idCardsDir = new File(IDCARDS_FOLDER);
+            if (!idCardsDir.exists()) {
+                idCardsDir.mkdirs();
             }
 
-            // Save uploaded file
+            // Save uploaded ID card file in idcards folder
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String filename = timestamp + "_" + originalFilename;
-            String filePath = UPLOAD_FOLDER + File.separator + filename;
+            String filePath = IDCARDS_FOLDER + File.separator + filename;
 
             File savedFile = new File(filePath);
             file.transferTo(savedFile);
-            logger.info("File saved: {}", filePath);
+            logger.info("ID card saved: {}", filePath);
 
             // Process the ID card PDF
             Map<String, Object> processingResult = pdfService.processIdCard(filePath);

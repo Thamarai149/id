@@ -363,6 +363,60 @@ public class PDFService {
     }
 
     /**
+     * Process ID card PDF file and save to idcards folder
+     */
+    public Map<String, Object> processIdCardPdf(File idCardFile) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            logger.info("Processing ID card PDF: {}", idCardFile.getName());
+            
+            // Validate the PDF file
+            Map<String, Object> validation = validatePDF(idCardFile.getPath());
+            if (!(Boolean) validation.get("valid")) {
+                return validation;
+            }
+            
+            // Copy PDF to idcards folder with timestamp
+            String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String savedFilename = "idcard_" + timestamp + ".pdf";
+            String savedPath = IDCARDS_FOLDER + File.separator + savedFilename;
+            
+            // Copy file to idcards folder
+            java.nio.file.Files.copy(idCardFile.toPath(), 
+                new File(savedPath).toPath(), 
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            
+            logger.info("✅ ID card PDF saved to: {}", savedPath);
+            
+            // Process the PDF (extract text and images)
+            Map<String, Object> processingResults = processIdCard(idCardFile.getPath());
+            
+            // Prepare file info
+            Map<String, Object> fileInfo = new HashMap<>();
+            fileInfo.put("originalFilename", idCardFile.getName());
+            fileInfo.put("savedFilename", savedFilename);
+            fileInfo.put("savedPath", savedPath);
+            fileInfo.put("fileSize", idCardFile.length());
+            fileInfo.put("timestamp", timestamp);
+            
+            result.put("success", true);
+            result.put("message", "ID card PDF processed and saved successfully");
+            result.put("fileInfo", fileInfo);
+            result.put("processingResults", processingResults);
+            
+        } catch (IOException | RuntimeException e) {
+            logger.error("Error processing ID card PDF: {}", e.getMessage());
+            result.put("success", false);
+            result.put("message", "Failed to process ID card PDF: " + e.getMessage());
+            result.put("errorCode", "PDF_PROCESSING_ERROR");
+        }
+        
+        return result;
+    }
+
+    /**
      * Complete processing of ID card PDF - extract both images and text
      */
     public Map<String, Object> processIdCard(String filePath) {

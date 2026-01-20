@@ -1,12 +1,5 @@
 package com.college.project.service;
 
-import com.github.sarxos.webcam.Webcam;
-import com.github.sarxos.webcam.WebcamResolution;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +7,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import com.github.sarxos.webcam.Webcam;
+import com.github.sarxos.webcam.WebcamResolution;
 
 /**
  * Camera Service for Live Face Detection
@@ -56,27 +58,63 @@ public class CameraService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            logger.info("🔍 Initializing camera system...");
+            
+            // Release any existing camera first
+            if (webcam != null && webcam.isOpen()) {
+                webcam.close();
+                Thread.sleep(1000); // Wait for camera to be released
+            }
+            
+            // Check if Windows Camera app is running and close it
+            try {
+                ProcessBuilder pb = new ProcessBuilder("taskkill", "/f", "/im", "WindowsCamera.exe");
+                pb.start().waitFor();
+                Thread.sleep(500); // Wait for process to close
+            } catch (Exception e) {
+                // Ignore if process doesn't exist
+            }
+            
             // Get default webcam
             webcam = Webcam.getDefault();
             
             if (webcam == null) {
                 logger.error("❌ No camera detected");
                 result.put("success", false);
-                result.put("message", "Camera not detected or already in use");
+                result.put("message", "No camera detected. Please check: 1) Camera is connected 2) Camera permissions are enabled 3) Close Windows Camera app if it opened automatically");
                 result.put("errorCode", "CAMERA_NOT_FOUND");
+                result.put("troubleshooting", java.util.List.of(
+                    "Close Windows Camera app that may have opened automatically",
+                    "Check Windows Camera privacy settings",
+                    "Close Skype, Teams, Zoom, or other camera apps",
+                    "Try Windows Camera app first to verify camera works",
+                    "Restart your computer if needed"
+                ));
                 return result;
             }
 
-            // Set camera resolution
-            webcam.setViewSize(WebcamResolution.VGA.getSize());
-            
-            // Open camera
-            if (!webcam.open()) {
-                logger.error("❌ Failed to open camera");
-                result.put("success", false);
-                result.put("message", "Camera detected but unable to open");
-                result.put("errorCode", "CAMERA_OPEN_ERROR");
-                return result;
+            // Check if camera is already open by another process
+            if (webcam.isOpen()) {
+                logger.warn("⚠️ Camera already open, attempting to use existing connection");
+            } else {
+                // Set camera resolution before opening
+                webcam.setViewSize(WebcamResolution.VGA.getSize());
+                
+                // Try to open camera with timeout
+                boolean opened = webcam.open();
+                if (!opened) {
+                    logger.error("❌ Failed to open camera");
+                    result.put("success", false);
+                    result.put("message", "Camera detected but unable to open. Another application might be using it.");
+                    result.put("errorCode", "CAMERA_OPEN_ERROR");
+                    result.put("troubleshooting", java.util.List.of(
+                        "Close all camera applications (Skype, Teams, Zoom)",
+                        "Check Windows Camera app works first",
+                        "Restart the application",
+                        "Try a different camera if available"
+                    ));
+                    return result;
+                }
             }
 
             isCameraActive = true;
@@ -87,16 +125,32 @@ public class CameraService {
             cameraInfo.put("width", CAMERA_WIDTH);
             cameraInfo.put("height", CAMERA_HEIGHT);
             cameraInfo.put("fps", 30);
+            cameraInfo.put("cameraName", webcam.getName());
 
             result.put("success", true);
-            result.put("message", "Camera initialized successfully");
+            result.put("message", "Camera initialized successfully: " + webcam.getName());
             result.put("cameraInfo", cameraInfo);
 
-        } catch (SecurityException | IllegalStateException e) {
-            logger.error("❌ Error initializing camera: {}", e.getMessage());
+        } catch (SecurityException e) {
+            logger.error("❌ Security error initializing camera: {}", e.getMessage());
             result.put("success", false);
-            result.put("message", "Camera initialization failed: " + e.getMessage());
-            result.put("errorCode", "CAMERA_INIT_ERROR");
+            result.put("message", "Camera access denied. Please check Windows Camera privacy settings.");
+            result.put("errorCode", "CAMERA_SECURITY_ERROR");
+            result.put("troubleshooting", java.util.List.of(
+                "Go to Windows Settings → Privacy & Security → Camera",
+                "Enable 'Camera access' and 'Desktop apps access'",
+                "Restart the application"
+            ));
+        } catch (IllegalStateException e) {
+            logger.error("❌ Camera state error: {}", e.getMessage());
+            result.put("success", false);
+            result.put("message", "Camera is in use by another application: " + e.getMessage());
+            result.put("errorCode", "CAMERA_IN_USE");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            result.put("success", false);
+            result.put("message", "Camera initialization interrupted");
+            result.put("errorCode", "CAMERA_INTERRUPTED");
         } catch (RuntimeException e) {
             logger.error("❌ Unexpected error initializing camera: {}", e.getMessage());
             result.put("success", false);

@@ -5,6 +5,7 @@ com\college\project\config\OpenCVConfig$OpenCVInfo.class
 com\college\project\controller\VerificationController.class
 com\college\project\model\ApiResponse.class
 com\college\project\controller\CameraController.class
+com\college\project\CommandLineApp.class
 com\college\project\service\PDFService.class
 com\college\project\model\VerificationResult.class
 com\college\project\service\FaceVerificationService.class
