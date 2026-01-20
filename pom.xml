@@ -44,24 +44,20 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- OpenCV for Java -->
-        <dependency>
-            <groupId>org.openpnp</groupId>
-            <artifactId>opencv</artifactId>
-            <version>4.8.0-0</version>
-        </dependency>
+        <!-- Basic image processing - No OpenCV for now -->
+        <!-- We'll use basic Java BufferedImage processing -->
 
         <!-- PDF Processing -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
-            <version>3.0.1</version>
+            <version>2.0.29</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox-tools</artifactId>
-            <version>3.0.1</version>
+            <version>2.0.29</version>
         </dependency>
 
         <!-- Image Processing -->
@@ -117,12 +113,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Face Recognition (Java alternative) -->
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>javacv-platform</artifactId>
-            <version>1.5.9</version>
-        </dependency>
+        <!-- Basic Java image processing - Removed JavaCV for now -->
 
         <!-- Webcam Capture -->
         <dependency>

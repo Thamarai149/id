@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,17 +58,12 @@ public class FaceVerificationService {
             result.put("faceCount", faceCount);
             result.put("message", String.format("Detected %d face(s) using Java image analysis", faceCount));
 
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             logger.error("Error detecting faces: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Face detection failed: " + e.getMessage());
             result.put("errorCode", "DETECTION_ERROR");
-        } catch (SecurityException e) {
-            logger.error("Security error detecting faces: {}", e.getMessage());
-            result.put("success", false);
-            result.put("message", "Face detection failed: " + e.getMessage());
-            result.put("errorCode", "SECURITY_ERROR");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Unexpected error detecting faces: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Face detection failed: " + e.getMessage());
@@ -113,7 +109,7 @@ public class FaceVerificationService {
             }
             
             return 0;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.warn("Error in simple face detection: {}", e.getMessage());
             return 1; // Assume face is present on error
         }
@@ -187,17 +183,12 @@ public class FaceVerificationService {
             result.put("message", "Face features extracted successfully");
             result.put("features", features);
 
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             logger.error("Error extracting face features: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Face feature extraction failed: " + e.getMessage());
             result.put("errorCode", "FEATURE_EXTRACTION_ERROR");
-        } catch (SecurityException e) {
-            logger.error("Security error extracting face features: {}", e.getMessage());
-            result.put("success", false);
-            result.put("message", "Face feature extraction failed: " + e.getMessage());
-            result.put("errorCode", "SECURITY_ERROR");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Unexpected error extracting face features: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Face feature extraction failed: " + e.getMessage());
@@ -300,7 +291,7 @@ public class FaceVerificationService {
             logger.info("Face comparison result: {}, Similarity: {:.4f}, Confidence: {:.2f}%", 
                        result.getResult(), combinedSimilarity, confidence);
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error comparing faces: {}", e.getMessage());
             result.setResult("Verification Failed");
             result.setMatch(false);
@@ -336,7 +327,7 @@ public class FaceVerificationService {
             logger.info("Identity verification completed: {}", result.getResult());
             return result;
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error in identity verification: {}", e.getMessage());
             
             VerificationResult errorResult = new VerificationResult();
@@ -415,17 +406,12 @@ public class FaceVerificationService {
             result.put("message", "Image quality is acceptable for face recognition");
             result.put("details", details);
 
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             logger.error("Error validating image quality: {}", e.getMessage());
             result.put("valid", false);
             result.put("message", "Image quality validation failed: " + e.getMessage());
             result.put("errorCode", "VALIDATION_ERROR");
-        } catch (SecurityException e) {
-            logger.error("Security error validating image quality: {}", e.getMessage());
-            result.put("valid", false);
-            result.put("message", "Image quality validation failed: " + e.getMessage());
-            result.put("errorCode", "SECURITY_ERROR");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Unexpected error validating image quality: {}", e.getMessage());
             result.put("valid", false);
             result.put("message", "Image quality validation failed: " + e.getMessage());

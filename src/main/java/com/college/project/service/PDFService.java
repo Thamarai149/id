@@ -1,6 +1,20 @@
 package com.college.project.service;
 
-import com.college.project.model.StudentDetails;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.imageio.ImageIO;
+
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
@@ -11,13 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.college.project.model.StudentDetails;
 
 /**
  * PDF Service for ID Card Processing
@@ -29,9 +37,11 @@ public class PDFService {
     private static final Logger logger = LoggerFactory.getLogger(PDFService.class);
     
     private static final String UPLOAD_FOLDER = "uploads";
+    private static final String IDCARDS_FOLDER = "idcards";
 
     public PDFService() {
         createUploadDirectory();
+        createIdCardsDirectory();
     }
 
     /**
@@ -43,6 +53,19 @@ public class PDFService {
             boolean created = uploadDir.mkdirs();
             if (created) {
                 logger.info("📁 Created upload directory: {}", UPLOAD_FOLDER);
+            }
+        }
+    }
+
+    /**
+     * Create ID cards directory if it doesn't exist
+     */
+    private void createIdCardsDirectory() {
+        File idCardsDir = new File(IDCARDS_FOLDER);
+        if (!idCardsDir.exists()) {
+            boolean created = idCardsDir.mkdirs();
+            if (created) {
+                logger.info("📁 Created ID cards directory: {}", IDCARDS_FOLDER);
             }
         }
     }
@@ -94,8 +117,13 @@ public class PDFService {
                 return result;
             }
 
-        } catch (Exception e) {
-            logger.error("Error validating PDF: {}", e.getMessage());
+        } catch (SecurityException e) {
+            logger.error("Security error validating PDF: {}", e.getMessage());
+            result.put("valid", false);
+            result.put("message", "PDF validation failed: " + e.getMessage());
+            result.put("errorCode", "VALIDATION_ERROR");
+        } catch (RuntimeException e) {
+            logger.error("Runtime error validating PDF: {}", e.getMessage());
             result.put("valid", false);
             result.put("message", "PDF validation failed: " + e.getMessage());
             result.put("errorCode", "VALIDATION_ERROR");
@@ -123,7 +151,7 @@ public class PDFService {
                 PDPage page = document.getPage(pageNum);
                 PDResources resources = page.getResources();
                 
-                for (String name : resources.getXObjectNames()) {
+                for (COSName name : resources.getXObjectNames()) {
                     PDXObject xObject = resources.getXObject(name);
                     
                     if (xObject instanceof PDImageXObject imageXObject) {
@@ -136,7 +164,7 @@ public class PDFService {
                         // Extract and save image
                         BufferedImage bufferedImage = imageXObject.getImage();
                         String imageFileName = String.format("extracted_image_p%d_%s.png", 
-                                                            pageNum + 1, name);
+                                                            pageNum + 1, name.getName());
                         String imagePath = UPLOAD_FOLDER + File.separator + imageFileName;
                         
                         File imageFile = new File(imagePath);
@@ -305,7 +333,7 @@ public class PDFService {
                 }
             }
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error parsing student details: {}", e.getMessage());
         }
 
@@ -373,7 +401,7 @@ public class PDFService {
                 result.put("errorCode", "TEXT_EXTRACTION_FAILED");
             }
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error processing ID card: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "ID card processing failed: " + e.getMessage());

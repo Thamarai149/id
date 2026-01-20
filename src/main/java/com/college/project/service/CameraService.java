@@ -97,7 +97,7 @@ public class CameraService {
             result.put("success", false);
             result.put("message", "Camera initialization failed: " + e.getMessage());
             result.put("errorCode", "CAMERA_INIT_ERROR");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("❌ Unexpected error initializing camera: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Camera initialization failed: " + e.getMessage());
@@ -162,7 +162,7 @@ public class CameraService {
             result.put("success", false);
             result.put("message", "Failed to save captured image: " + e.getMessage());
             result.put("errorCode", "SAVE_ERROR");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("❌ Error during face capture: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Face capture failed: " + e.getMessage());
@@ -205,7 +205,7 @@ public class CameraService {
             }
             
             return 0;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.warn("Error in simple face detection: {}", e.getMessage());
             return 1; // Assume face is present on error
         }
@@ -237,7 +237,7 @@ public class CameraService {
                 logger.info("✅ Camera resources released");
             }
             isCameraActive = false;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("❌ Error releasing camera: {}", e.getMessage());
         }
     }
@@ -265,7 +265,7 @@ public class CameraService {
             result.put("captureWorking", captureWorking);
             result.put("cameraInfo", initResult.get("cameraInfo"));
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("❌ Camera test failed: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Camera test failed: " + e.getMessage());

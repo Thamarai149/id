@@ -110,17 +110,12 @@ public class VerificationController {
                     (String) processingResult.get("errorCode")));
             }
 
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
             logger.error("Error saving uploaded file: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "File upload failed: " + e.getMessage(),
                 "UPLOAD_ERROR"));
-        } catch (SecurityException e) {
-            logger.error("Security error in upload_id_card endpoint: {}", e.getMessage());
-            return ResponseEntity.internalServerError().body(ApiResponse.error(
-                "ID card upload failed: " + e.getMessage(),
-                "SECURITY_ERROR"));
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Unexpected error in upload_id_card endpoint: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "ID card upload failed: " + e.getMessage(),
@@ -194,7 +189,7 @@ public class VerificationController {
             return ResponseEntity.ok(ApiResponse.success(
                 verificationResult.getMessage(), verificationResult));
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error in verify_identity endpoint: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "Identity verification failed: " + e.getMessage(),
@@ -240,7 +235,7 @@ public class VerificationController {
                     (String) result.get("errorCode")));
             }
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error in extract_text endpoint: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "Text extraction failed: " + e.getMessage(),
@@ -286,7 +281,7 @@ public class VerificationController {
                     (String) result.get("errorCode")));
             }
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error in extract_images endpoint: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "Image extraction failed: " + e.getMessage(),
@@ -330,7 +325,7 @@ public class VerificationController {
             return ResponseEntity.ok(ApiResponse.success(
                 result.getMessage(), result));
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             logger.error("Error in compare_faces endpoint: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(ApiResponse.error(
                 "Face comparison failed: " + e.getMessage(),
