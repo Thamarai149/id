@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo Face Capture and ID Card Processing
+echo Face Verification System
 echo ========================================
 
 echo.
@@ -32,12 +32,13 @@ if errorlevel 1 (
 echo ✅ Maven is available
 echo.
 
-echo Starting Face Capture and ID Card Processing System...
+echo Starting Face Verification System...
 echo.
 echo Instructions:
-echo 1. Make sure your camera is connected and working
-echo 2. Close any other camera applications (Skype, Teams, etc.)
-echo 3. Follow the on-screen prompts
+echo 1. You can either capture from camera OR upload a student photo
+echo 2. Make sure your camera is connected (if using camera option)
+echo 3. For photo upload, place your student photo in this directory
+echo 4. Follow the on-screen prompts
 echo.
 
 REM Run the application

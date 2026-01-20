@@ -12,3 +12,4 @@ com\college\project\service\FaceVerificationService.class
 com\college\project\FaceVerificationApplication.class
 com\college\project\service\CameraService.class
 com\college\project\model\VerificationResult$VerificationDetails.class
+com\college\project\service\ReportGenerationService.class
